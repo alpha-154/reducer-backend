@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "target": "ES2020", // Sets ECMAScript version
+    "module": "ES6", // Choose module type (like 'commonjs' or 'es6')
+    "baseUrl": "./", // Sets the base directory for absolute imports
+    "paths": {
+      "*": ["src/*"] // Adjust to your folder structure
+    }
+  },
+  "include": ["src/**/*.js"], // Specifies which files to include in error checking
+  "exclude": ["node_modules"] // Exclude unnecessary files
+}
