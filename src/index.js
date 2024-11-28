@@ -7,9 +7,30 @@ import { createServer } from "http";
 import { setupSocket } from "./socket.js";
 
 const server = createServer(app);
+
+const allowedOrigins = [
+  process.env.CORS_ORIGIN_DEVELOPMENT, // Development
+  process.env.CORS_ORIGIN_PRODUCTION,  // Production
+];
+
+if (!allowedOrigins.every((origin) => origin)) {
+  throw new Error("One or more CORS_ORIGIN values are undefined in the environment variables");
+}
+
+console.log("Environment:", process.env.NODE_ENV);
+console.log("Allowed CORS Origins:", allowedOrigins);
+
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: (origin, callback) => {
+      console.log("origin: ", origin);
+      // Allow requests with no origin (e.g., mobile apps or Postman)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS policy does not allow access from origin: ${origin}`));
+      }
+    },
     credentials: true,
   },
 });
@@ -20,7 +41,7 @@ setupSocket(io);
 // Start the server
 connectDB()
   .then(() => {
-    server.listen(process.env.PORT || 7000, () => {
+    server.listen(process.env.PORT, () => {
       console.log(`⚙️ Server is running at port : ${process.env.PORT}`);
     });
   })

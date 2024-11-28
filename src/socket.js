@@ -45,7 +45,7 @@ export function setupSocket(io) {
         return;
       }
 
-      console.log(`Private message content: ${data.content}`);
+      //console.log(`Private message content: ${data.content}`);
       socket.to(privateMsgIdentifier).emit("privatemessage", data);
     });
 
@@ -59,7 +59,7 @@ export function setupSocket(io) {
         return;
       }
 
-      console.log(`Group message content: ${data}`);
+    //  console.log(`Group message content: ${data}`);
       socket.to(groupMsgIdentifier).emit("groupmessage", data);
     });
 

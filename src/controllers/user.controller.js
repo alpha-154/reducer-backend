@@ -862,7 +862,7 @@ export const sendVoiceMessage = async (req, res) => {
           .status(500)
           .json({ message: "Failed to retrieve Cloudinary upload URL!" });
       }
-      console.log("cloudinaryResult secure_url", cloudinaryResult.secure_url);
+      //console.log("cloudinaryResult secure_url", cloudinaryResult.secure_url);
 
       // Create and save the voice message in the database
       const createdAt = dayjs().toDate();
