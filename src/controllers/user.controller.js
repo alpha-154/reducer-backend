@@ -79,6 +79,7 @@ export const registerUser = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error!" });
   }
 };
+
 export const loginUser = async (req, res) => {
   const { userName, password } = req.body;
   // Check if both fields are provided
@@ -111,10 +112,12 @@ export const loginUser = async (req, res) => {
         expiresIn: "1h", // Set token expiration as needed
       }
     );
+    
     // Send token as an HTTP-only cookie
     res.cookie("accessToken", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Send securely only in production
+      sameSite: "none", // Explicitly set for cross-origin requests
       maxAge: 60 * 60 * 1000, // Token expiry in ms
     });
     return res
