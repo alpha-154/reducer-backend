@@ -120,6 +120,7 @@ export const loginUser = async (req, res) => {
       sameSite: 'none', // Required for cross-domain cookies
       maxAge: 3600 * 1000, // 1 hour
       path: "/", // Ensure the cookie is accessible across all paths
+      domain: ".vercel.app", // Shared domain for frontend and backend
     });
     return res
       .status(200)
