@@ -3,7 +3,7 @@ import Publickey from "../models/publickey.model.js";
 import Message from "../models/message.model.js";
 import PrivateMessage from "../models/privatemessage.model.js";
 import Notifications from "../models/notification.model.js";
-import { Readable } from "stream";
+
 import * as fs from "fs";
 
 import cloudinary from "../config/cloudinary.js";
@@ -119,6 +119,7 @@ export const loginUser = async (req, res) => {
       secure: true, // Ensures the cookie is only sent over HTTPS
       sameSite: 'none', // Required for cross-domain cookies
       maxAge: 3600 * 1000, // 1 hour
+      path: "/", // Ensure the cookie is accessible across all paths
     });
     return res
       .status(200)
@@ -163,8 +164,8 @@ export const logoutUser = async (req, res) => {
     // Clear the accessToken cookie
     res.cookie("accessToken", "", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: true,
+      sameSite: "none",
       expires: new Date(0), // Expire the cookie immediately
       path: "/", // Ensure cookie is cleared site-wide
     });
