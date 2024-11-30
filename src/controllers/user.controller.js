@@ -115,10 +115,10 @@ export const loginUser = async (req, res) => {
     
     // Send token as an HTTP-only cookie
     res.cookie("accessToken", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Send securely only in production
-      sameSite: "none", // Explicitly set for cross-origin requests
-      maxAge: 60 * 60 * 1000, // Token expiry in ms
+      httpOnly: true, // Prevent access via JavaScript
+      secure: true, // Ensures the cookie is only sent over HTTPS
+      sameSite: 'none', // Required for cross-domain cookies
+      maxAge: 3600 * 1000, // 1 hour
     });
     return res
       .status(200)
