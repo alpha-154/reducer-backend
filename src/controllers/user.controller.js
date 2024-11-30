@@ -127,6 +127,7 @@ export const loginUser = async (req, res) => {
       .json({
         message: "Welcome Back!",
         user: { userName: user.userName, publicKey: user.publicKey },
+        token
       });
   } catch (error) {
     console.error("Error registering user:", error);
