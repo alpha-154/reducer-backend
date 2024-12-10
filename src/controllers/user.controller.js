@@ -3,7 +3,7 @@ import Publickey from "../models/publickey.model.js";
 import Message from "../models/message.model.js";
 import PrivateMessage from "../models/privatemessage.model.js";
 import Notifications from "../models/notification.model.js";
-
+import { onlineUsers, userRooms } from "../socket.js";
 import * as fs from "fs";
 
 import cloudinary from "../config/cloudinary.js";
@@ -12,10 +12,6 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import dayjs from "dayjs";
-
-//Todo: add zod validation as such so that a user have to provide strong password.
-
-
 
 export const registerUser = async (req, res) => {
   const { userName, password, imageUrl } = req.body;
@@ -112,23 +108,21 @@ export const loginUser = async (req, res) => {
         expiresIn: "1h", // Set token expiration as needed
       }
     );
-    
+
     // Send token as an HTTP-only cookie
     res.cookie("accessToken", token, {
       httpOnly: true, // Prevent access via JavaScript
       secure: true, // Ensures the cookie is only sent over HTTPS
-      sameSite: 'none', // Required for cross-domain cookies
+      sameSite: "none", // Required for cross-domain cookies
       maxAge: 3600 * 1000, // 1 hour
       path: "/", // Ensure the cookie is accessible across all paths
       //domain: ".vercel.app", // Shared domain for frontend and backend
     });
-    return res
-      .status(200)
-      .json({
-        message: "Welcome Back!",
-        user: { userName: user.userName, publicKey: user.publicKey },
-        token
-      });
+    return res.status(200).json({
+      message: "Welcome Back!",
+      user: { userName: user.userName, publicKey: user.publicKey },
+      token,
+    });
   } catch (error) {
     console.error("Error registering user:", error);
     return res.status(500).json({ message: "Internal Server Error!" });
@@ -337,11 +331,9 @@ export const acceptMessageRequest = async (req, res) => {
       { $addToSet: { friendList: requestedUserData._id } }
     );
     if (currentUserUpdate.modifiedCount === 0) {
-      return res
-        .status(400)
-        .json({
-          message: "Failed to add friend to current users friend list.",
-        });
+      return res.status(400).json({
+        message: "Failed to add friend to current users friend list.",
+      });
     }
 
     //Add current user to requested user's friendList
@@ -350,11 +342,9 @@ export const acceptMessageRequest = async (req, res) => {
       { $addToSet: { friendList: currentUserData._id } }
     );
     if (requestedUserUpdate.modifiedCount === 0) {
-      return res
-        .status(400)
-        .json({
-          message: "Failed to add friend to requested users friend list.",
-        });
+      return res.status(400).json({
+        message: "Failed to add friend to requested users friend list.",
+      });
     }
 
     // Remove the message request from current user's Notifications
@@ -367,11 +357,9 @@ export const acceptMessageRequest = async (req, res) => {
       }
     );
     if (notificationUpdate.modifiedCount === 0) {
-      return res
-        .status(400)
-        .json({
-          message: "Failed to remove message request from notifications.",
-        });
+      return res.status(400).json({
+        message: "Failed to remove message request from notifications.",
+      });
     }
 
     // Add current user to requested user's Notifications in acceptedSentPrivateMessageRequest
@@ -384,11 +372,9 @@ export const acceptMessageRequest = async (req, res) => {
       }
     );
     if (requestedUserNotificationUpdate.modifiedCount === 0) {
-      return res
-        .status(400)
-        .json({
-          message: "Failed to add acceptance to sent private message request.",
-        });
+      return res.status(400).json({
+        message: "Failed to add acceptance to sent private message request.",
+      });
     }
 
     // Remove current user's username from requested user's sentPrivateMessageRequest
@@ -397,12 +383,9 @@ export const acceptMessageRequest = async (req, res) => {
       { $pull: { sentPrivateMessageRequest: currentUserUserName } }
     );
     if (requestedUserUpdate2.modifiedCount === 0) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Failed to remove username from sent private message request.",
-        });
+      return res.status(400).json({
+        message: "Failed to remove username from sent private message request.",
+      });
     }
 
     // Check if a PrivateMessage document already exists between these users
@@ -430,11 +413,9 @@ export const acceptMessageRequest = async (req, res) => {
       }
     );
     if (currentUserChatListUpdate.modifiedCount === 0) {
-      return res
-        .status(400)
-        .json({
-          message: "Failed to update current user’s private chat list.",
-        });
+      return res.status(400).json({
+        message: "Failed to update current user’s private chat list.",
+      });
     }
 
     const requestedUserChatListUpdate = await User.updateOne(
@@ -449,11 +430,9 @@ export const acceptMessageRequest = async (req, res) => {
       }
     );
     if (requestedUserChatListUpdate.modifiedCount === 0) {
-      return res
-        .status(400)
-        .json({
-          message: "Failed to update requested user’s private chat list.",
-        });
+      return res.status(400).json({
+        message: "Failed to update requested user’s private chat list.",
+      });
     }
 
     // Update both users' chatSortList for "All connected Users"
@@ -473,7 +452,12 @@ export const acceptMessageRequest = async (req, res) => {
       { $addToSet: { "chatSortList.$.members": currentUserData._id } }
     );
 
-    res.status(200).json({ message: `Now you are connected with ${requestedUserUserName}`, requestedUserUserName });
+    res
+      .status(200)
+      .json({
+        message: `Now you are connected with ${requestedUserUserName}`,
+        requestedUserUserName,
+      });
   } catch (error) {
     console.error("Error accepting message request:", error);
     return res.status(500).json({ message: "Internal server error!" });
@@ -485,7 +469,7 @@ export const declinePrivateMessageRequest = async (req, res) => {
   const { currentUserUserName, requestedUserUserName } = req.body;
 
   // Check for missing request body fields
-  if (!currentUserUserName || !requestedUserUserName ) {
+  if (!currentUserUserName || !requestedUserUserName) {
     return res
       .status(400)
       .json({ message: "Both currentUser and requestedUser are required" });
@@ -493,15 +477,17 @@ export const declinePrivateMessageRequest = async (req, res) => {
 
   try {
     // Find the current and requested users based on their usernames
-    const currentUserData = await User.findOne({ userName: currentUserUserName });
-    const requestedUserData = await User.findOne({ userName: requestedUserUserName });
+    const currentUserData = await User.findOne({
+      userName: currentUserUserName,
+    });
+    const requestedUserData = await User.findOne({
+      userName: requestedUserUserName,
+    });
 
     if (!currentUserData || !requestedUserData) {
-      return res
-        .status(404)
-        .json({
-          message: `Current user ${currentUserUserName} or Requested user '${requestedUserUserName}' not found`,
-        });
+      return res.status(404).json({
+        message: `Current user ${currentUserUserName} or Requested user '${requestedUserUserName}' not found`,
+      });
     }
 
     const currentUserId = currentUserData._id;
@@ -516,12 +502,9 @@ export const declinePrivateMessageRequest = async (req, res) => {
     });
 
     if (!currentUserNotifications || !requestedUserNotifications) {
-      return res
-        .status(404)
-        .json({
-          message:
-            "Notification record for current or requested user not found",
-        });
+      return res.status(404).json({
+        message: "Notification record for current or requested user not found",
+      });
     }
 
     // 1. Remove requestedUser's ID from currentUser's receivedPrivateMessageRequest in Notifications
@@ -535,12 +518,10 @@ export const declinePrivateMessageRequest = async (req, res) => {
     );
 
     if (receivedUpdateResult.modifiedCount === 0) {
-      return res
-        .status(404)
-        .json({
-          message:
-            "Failed to remove requested user data from the Current user's receivedPrivateMessageRequest from Notification model",
-        });
+      return res.status(404).json({
+        message:
+          "Failed to remove requested user data from the Current user's receivedPrivateMessageRequest from Notification model",
+      });
     }
 
     // 2. Add currentUser's ID to requestedUser's declinedSentPrivateMessageRequest in Notifications
@@ -557,11 +538,9 @@ export const declinePrivateMessageRequest = async (req, res) => {
     );
 
     if (declinedUpdateResult.modifiedCount === 0) {
-      return res
-        .status(500)
-        .json({
-          message: "Failed to add to declinedSentPrivateMessageRequest",
-        });
+      return res.status(500).json({
+        message: "Failed to add to declinedSentPrivateMessageRequest",
+      });
     }
 
     // 3. Remove currentUser's username from requestedUser's sentPrivateMessageRequest in User model
@@ -582,18 +561,20 @@ export const declinePrivateMessageRequest = async (req, res) => {
 
     res
       .status(200)
-      .json({ message: "Private message request declined!", requestedUserUserName });
+      .json({
+        message: "Private message request declined!",
+        requestedUserUserName,
+      });
   } catch (error) {
     console.error("Error declining private message request:", error);
-    res
-      .status(500)
-      .json({
-        message: "An error occurred while declining the request",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "An error occurred while declining the request",
+      error: error.message,
+    });
   }
 };
 
+// make changes here
 export const getConnectedUsers = async (req, res) => {
   const { currentUserUserName } = req.params;
 
@@ -627,34 +608,67 @@ export const getConnectedUsers = async (req, res) => {
 
         let lastMessage = "";
         let lastMessageTime = "";
+        let totalUnseenMessages = 0;
         let privateMessageId = privateChat ? privateChat._id.toString() : null;
 
         if (privateChat) {
-          // Find the last message in this private chat, if it exists
-          const lastMessageData = await Message.findOne({
+          // Find all messages in this private chat, if it exists
+          const allMessageData = await Message.find({
             privateMsgIdentifier: privateChat._id,
           })
-            .sort({ createdAt: -1 })
-            .exec();
+          .sort({ createdAt: -1 }) // Sort by createdAt in descending order
+          .exec();
+            
 
-          if (lastMessageData) {
+          if (allMessageData.length > 0) {
+            const lastMessageData = allMessageData[0];
             lastMessage = lastMessageData.content;
             lastMessageTime = lastMessageData.createdAt;
+            allMessageData.forEach((message) => {
+              if(!message.seenBy.includes(currentUser._id.toString())) {
+                totalUnseenMessages++;
+              }
+            })
           }
+
         }
+
+        //console.log("onlineUsers -> getConnectedUsers: ", onlineUsers);
+
+        // Determine the online status of the member
+        const isOnline = Array.from(onlineUsers.values()).includes(
+          member._id.toString()
+        );
+        const status = isOnline ? "online" : "offline";
 
         // Push the member's details into the formatted list
         formattedList.members.push({
+          userId: member._id.toString(),
           userName: member.userName,
           profileImage: member.profileImage,
           lastMessage,
           lastMessageTime,
+          totalUnseenMessages,
           privateMessageId,
+          status,
         });
       }
 
+      // Sort the formattedList.members before pushing it to connectedUsers
+      formattedList.members.sort((a, b) => {
+        // Compare by `lastMessageTime` (descending order)
+        const timeComparison = new Date(b.lastMessageTime) - new Date(a.lastMessageTime);
+        if (timeComparison !== 0) {
+          return timeComparison;
+        }
+        // If times are the same, compare by `totalUnseenMessages` (descending order)
+        return b.totalUnseenMessages - a.totalUnseenMessages;
+      });
+
       connectedUsers.push(formattedList);
     }
+
+   //console.log("connectedUsers -> getConnectedUsers: ", connectedUsers);
 
     res.status(200).json({ connectedUsers });
   } catch (error) {
@@ -689,7 +703,7 @@ export const searchUsers = async (req, res) => {
     // Step 2: Retrieve users matching the search query
     const users = await User.find({
       userName: { $regex: query, $options: "i" },
-    }).select("userName profileImage");
+    }).select("_id userName profileImage");
 
     // Step 3: Build the response with `isFriend` and `isMessageRequestSent` fields
     const formattedUsers = users.map((user) => {
@@ -703,6 +717,7 @@ export const searchUsers = async (req, res) => {
         currentUser.sentPrivateMessageRequest.includes(user.userName);
 
       return {
+        userId: user._id.toString(),
         userName: user.userName,
         profileImage: user.profileImage,
         isFriend,
@@ -717,6 +732,7 @@ export const searchUsers = async (req, res) => {
   }
 };
 
+//make changes here
 export const sendMessage = async (req, res) => {
   const { sender, receiver, content } = req.body;
 
@@ -746,15 +762,45 @@ export const sendMessage = async (req, res) => {
         .json({ message: "No message thread exists between these users!" });
     }
 
+    // Forming seenBy array
+    const seenBy = [];
+    seenBy.push(senderUser._id.toString());
+    
+
     // Use Day.js for the createdAt field
     const createdAt = dayjs().toDate();
 
+    // check whether the receiver is online or not
+    let receiverSocketId = "";
+
+    onlineUsers.forEach(( userId, socketId) => {
+      
+       if(userId === receiverUser._id.toString()){
+        receiverSocketId = socketId;
+      }
+    })
+    //console.log("receiverSocketId -> sendMessage: ", receiverSocketId);
+ 
+    if(receiverSocketId){
+      const receiverCurrentRoomIdentifier = userRooms.get(receiverSocketId);
+      //console.log("receiverCurrentRoomIdentifier -> sendMessage: ", receiverCurrentRoomIdentifier);
+      //console.log("privateMessage._id.toString() -> sendMessage: ", privateMessage._id.toString());
+      if(receiverCurrentRoomIdentifier === privateMessage._id.toString()){
+        //receiver is active on this private chat room
+        console.log("receiver is active on this private chat room");
+        seenBy.push(receiverUser._id.toString());
+      }
+     
+    }
+   
+
     // Create a new message
     const newMessage = new Message({
-      from: sender,
-      to: receiver,
+      from: senderUser._id.toString(),
+      to:  receiverUser._id.toString(),
       contentType: "text",
       content,
+      seenBy,
       isGroupMsg: false, // This is a private message, not a group message
       privateMsgIdentifier: privateMessage._id,
       createdAt,
@@ -774,7 +820,6 @@ export const sendMessage = async (req, res) => {
   }
 };
 
-
 // sending audio messages
 export const sendVoiceMessage = async (req, res) => {
   const form = formidable({
@@ -783,7 +828,6 @@ export const sendVoiceMessage = async (req, res) => {
   });
 
   form.parse(req, async (err, fields, files) => {
-
     //console.log("Fields:", fields);
     //console.log("Files:", files);
 
@@ -797,7 +841,7 @@ export const sendVoiceMessage = async (req, res) => {
     const receiverUserName = receiver[0]; // Extract username from the array
 
     //console.log("sender:", senderUserName, "receiver:", receiverUserName);
-    
+
     const audioFile = files.audio[0]; // The audio file key from FormData
     //console.log("audioFile:", audioFile);
 
@@ -808,13 +852,13 @@ export const sendVoiceMessage = async (req, res) => {
     }
     //console.log("audioFile size : ", audioFile.size/(1024 *1024) , "mb");
 
-     // Check file size (2MB = 2 * 1024 * 1024 bytes)
-     const maxFileSize = 2 * 1024 * 1024;
-     if (audioFile.size > maxFileSize) {
-       return res
-         .status(400)
-         .json({ message: "Audio file size exceeds the 2MB limit!" });
-     }
+    // Check file size (2MB = 2 * 1024 * 1024 bytes)
+    const maxFileSize = 2 * 1024 * 1024;
+    if (audioFile.size > maxFileSize) {
+      return res
+        .status(400)
+        .json({ message: "Audio file size exceeds the 2MB limit!" });
+    }
 
     try {
       // Validate sender and receiver
@@ -851,10 +895,10 @@ export const sendVoiceMessage = async (req, res) => {
               }
             }
           );
-    
+
           const fileStream = fs.createReadStream(audioFile.filepath);
           fileStream.pipe(uploadStream);
-    
+
           fileStream.on("error", (streamError) => {
             reject(streamError);
           });
@@ -870,14 +914,41 @@ export const sendVoiceMessage = async (req, res) => {
       }
       //console.log("cloudinaryResult secure_url", cloudinaryResult.secure_url);
 
+
+      // Forming seenBy array
+    const seenBy = [];
+    seenBy.push(senderUser._id.toString());
+
+
       // Create and save the voice message in the database
       const createdAt = dayjs().toDate();
 
+
+      // check whether the receiver is online or not
+    let receiverSocketId = "";
+
+    onlineUsers.forEach(( userName, socketId) => {
+       if(userName === receiver){
+        receiverSocketId = socketId;
+      }
+    })
+ 
+    if(receiverSocketId){
+      const receiverCurrentRoomIdentifier = userRooms.get(receiverSocketId);
+      if(receiverCurrentRoomIdentifier === privateMessage._id){
+        //receiver is active on this private chat room
+        console.log("receiver is active on this private chat room");
+        seenBy.push(receiverUser._id.toString());
+      }
+     
+    }
+  
       const newMessage = new Message({
         from: senderUserName,
         to: receiverUserName,
         contentType: "audio",
         content: cloudinaryResult.secure_url,
+        seenBy,
         isGroupMsg: false,
         privateMsgIdentifier: privateMessage._id,
         createdAt,
@@ -889,16 +960,13 @@ export const sendVoiceMessage = async (req, res) => {
       privateMessage.messageList.push(newMessage._id);
       await privateMessage.save();
 
-      res
-        .status(201)
-        .json({ message: newMessage });
+      res.status(201).json({ message: newMessage });
     } catch (error) {
       console.error("Error sending voice message:", error);
       res.status(500).json({ message: "Internal server error!" });
     }
   });
 };
-
 
 export const getPreviousMessages = async (req, res) => {
   const { currentUserUserName, chatWithUserUserName } = req.params;
@@ -931,15 +999,26 @@ export const getPreviousMessages = async (req, res) => {
     }).populate({
       path: "messageList",
       model: "Message",
-      select: "from to contentType content createdAt",
+      select: "from to contentType content seenBy createdAt",
       options: { sort: { createdAt: 1 } }, // Sort messages by timestamp ascending
     });
 
+   
+    
     if (!privateMessage) {
       return res.status(404).json({ message: "No previous messages found!" });
     }
 
-    //newly added code
+     // since this controller will be called after the message `Drawer` component mounts
+    // so mark all messages as seen if it's not already marked to true
+    privateMessage.messageList.forEach(async (message) => {
+      if (!message.seenBy.includes(currentUserData._id.toString())) { // Check if user ID is in seenBy array
+        message.seenBy.push(currentUserData._id.toString());
+        await message.save(); // Save the updated message
+      }
+    });
+
+
     // Group messages by date
     const previousMessages = privateMessage.messageList.reduce((acc, msg) => {
       const dateKey = dayjs(msg.createdAt).format("YYYY-MM-DD");
@@ -949,12 +1028,14 @@ export const getPreviousMessages = async (req, res) => {
         acc[dateKey] = []; // Initialize an empty array if the date key is not yet present.
       }
 
+
       // Add the message to the appropriate date array.
       acc[dateKey].push({
         from: msg.from,
         to: msg.to,
         contentType: msg.contentType,
         content: msg.content,
+        seenBy: msg.seenBy,
         createdAt: msg.createdAt,
       });
 
@@ -1007,12 +1088,10 @@ export const createUserSortingList = async (req, res) => {
     user.chatSortList.push(newList);
     await user.save();
 
-    return res
-      .status(201)
-      .json({
-        message: "List created successfully",
-        createdList: newList,
-      });
+    return res.status(201).json({
+      message: "List created successfully",
+      createdList: newList,
+    });
   } catch (error) {
     console.error("Error creating sorting list:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -1055,7 +1134,12 @@ export const updateUserSortList = async (req, res) => {
       return res.status(404).json({ message: "List not found" });
     }
 
-    return res.status(200).json({ message: "List updated successfully", updatedListNameData: { currentListName, updatedListName} });
+    return res
+      .status(200)
+      .json({
+        message: "List updated successfully",
+        updatedListNameData: { currentListName, updatedListName },
+      });
   } catch (error) {
     console.error("Error updating sorting list:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -1082,7 +1166,12 @@ export const deleteUserSortList = async (req, res) => {
       return res.status(404).json({ message: "List not found" });
     }
 
-    return res.status(200).json({ message: "List deleted successfully", deletedListName: deleteListName });
+    return res
+      .status(200)
+      .json({
+        message: "List deleted successfully",
+        deletedListName: deleteListName,
+      });
   } catch (error) {
     console.error("Error deleting sorting list:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -1091,16 +1180,14 @@ export const deleteUserSortList = async (req, res) => {
 
 // End connection with a user....
 export const unfriendUser = async (req, res) => {
-
-  
   try {
     const { currentUserUserName, unfriendUserUserName } = req.query;
-  //console.log("currentUserUserName", currentUserUserName, "unfriendUserUserName", unfriendUserUserName);
-  if (!currentUserUserName || !unfriendUserUserName) {
-    return res
-      .status(400)
-      .json({ message: "Sender or Recipient fields not found!" });
-  }
+    //console.log("currentUserUserName", currentUserUserName, "unfriendUserUserName", unfriendUserUserName);
+    if (!currentUserUserName || !unfriendUserUserName) {
+      return res
+        .status(400)
+        .json({ message: "Sender or Recipient fields not found!" });
+    }
     // Find the current user and the user to be unfriended
     const currentUser = await User.findOne({ userName: currentUserUserName });
     const unfriendUser = await User.findOne({ userName: unfriendUserUserName });
@@ -1161,7 +1248,12 @@ export const unfriendUser = async (req, res) => {
     }
 
     // Send a success response
-    res.status(200).json({ message: "Unfriended successfully.", unfriendedUserUserName: unfriendUser.userName });
+    res
+      .status(200)
+      .json({
+        message: "Unfriended successfully.",
+        unfriendedUserUserName: unfriendUser.userName,
+      });
   } catch (error) {
     console.error("Error unfriending user:", error);
     res
@@ -1258,12 +1350,14 @@ export const addToChatSortList = async (req, res) => {
   }
 };
 
-
 // Update An User's Profile Image
 export const updateProfileImage = async (req, res) => {
   try {
-    const {currentUserUserName, imageUrl} = req.body;
-    if(!imageUrl || !currentUserUserName) return res.status(400).json({ message: "Username or Image url isn't provided!" });
+    const { currentUserUserName, imageUrl } = req.body;
+    if (!imageUrl || !currentUserUserName)
+      return res
+        .status(400)
+        .json({ message: "Username or Image url isn't provided!" });
 
     const user = await User.findOne({ userName: currentUserUserName });
     //console.log("user name: ", user.userName);
@@ -1272,25 +1366,41 @@ export const updateProfileImage = async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-
     user.profileImage = imageUrl;
-   
+
     await user.save();
     //console.log("user profile Image after Update", user.profileImage);
-    res.status(200).json({ message: "Profile Image Updated Successfully!", updatedProfileImage: user.profileImage });
-
+    res
+      .status(200)
+      .json({
+        message: "Profile Image Updated Successfully!",
+        updatedProfileImage: user.profileImage,
+      });
   } catch (error) {
-    res.status(500).json({ message: "An error occurred while updating the profile image." });
+    res
+      .status(500)
+      .json({ message: "An error occurred while updating the profile image." });
   }
-}
+};
 
 // Change An User's Current Password
 export const updatePassword = async (req, res) => {
   try {
     const { currentUserUserName, currentPassword, newPassword } = req.body;
-    console.log( "username: ", currentUserUserName, "currentPassword: ",currentPassword,"currentPassword: ", newPassword)
-    if(!currentUserUserName || !currentPassword || !newPassword){
-      return res.status(400).json({ message: "Username or Current Password or New Password not found!" });
+    console.log(
+      "username: ",
+      currentUserUserName,
+      "currentPassword: ",
+      currentPassword,
+      "currentPassword: ",
+      newPassword
+    );
+    if (!currentUserUserName || !currentPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({
+          message: "Username or Current Password or New Password not found!",
+        });
     }
 
     // Check if user exists
@@ -1300,16 +1410,21 @@ export const updatePassword = async (req, res) => {
     }
 
     // Validate current password
-    const isPasswordMatch = await bcrypt.compare(currentPassword, user.password);
+    const isPasswordMatch = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
     if (!isPasswordMatch) {
       return res.status(400).json({ message: "Incorrect current password." });
     }
 
     // Validate updated password requirements
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    const passwordRegex =
+      /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
-        message: "Updated password must be at least 8 characters long, include one uppercase letter, one number, and one special character.",
+        message:
+          "Updated password must be at least 8 characters long, include one uppercase letter, one number, and one special character.",
       });
     }
 
@@ -1321,6 +1436,8 @@ export const updatePassword = async (req, res) => {
     res.status(200).json({ message: "Password updated successfully." });
   } catch (error) {
     console.error("Error updating password:", error);
-    res.status(500).json({ message: "An error occurred while updating the password." });
+    res
+      .status(500)
+      .json({ message: "An error occurred while updating the password." });
   }
 };

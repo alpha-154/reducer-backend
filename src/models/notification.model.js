@@ -31,7 +31,7 @@ const notificationsSchema = new Schema(
       {
         userId: {
           type: Schema.Types.ObjectId,
-          ref: "User", // Reference to User documents
+          ref: "User",
         },
         createdAt: {
           type: Date,
@@ -51,7 +51,7 @@ const notificationsSchema = new Schema(
       {
         groupId: {
           type: Schema.Types.ObjectId,
-          ref: "Group", // Reference to Group documents
+          ref: "Group",
         },
         createdAt: {
           type: Date,
@@ -71,7 +71,7 @@ const notificationsSchema = new Schema(
       {
         groupId: {
           type: Schema.Types.ObjectId,
-          ref: "Group", // Reference to Group documents
+          ref: "Group",
         },
         createdAt: {
           type: Date,
@@ -88,11 +88,10 @@ const notificationsSchema = new Schema(
       },
     ],
     receivedPrivateMessageRequest: [
-      // name is changed from messageRequest which was used In User model
       {
         userId: {
           type: Schema.Types.ObjectId,
-          ref: "User", // Reference to User documents
+          ref: "User",
         },
         createdAt: {
           type: Date,
@@ -109,7 +108,6 @@ const notificationsSchema = new Schema(
       },
     ],
     receivedGroupJoinRequestAsAdmin: [
-      // name is changed from acceptGroupJoinRequest which was used In User model
       {
         groupName: {
           type: String,
@@ -134,7 +132,6 @@ const notificationsSchema = new Schema(
             },
           },
         ],
-      
       },
     ],
   },

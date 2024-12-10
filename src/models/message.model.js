@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-// Define the user schema
+
 const messageSchema = new Schema(
   {
     from: {
@@ -22,16 +22,22 @@ const messageSchema = new Schema(
       type: Boolean,
       required: true,
     },
-    senderProfileImage:{
+    seenBy: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    senderProfileImage: {
       type: String,
     },
     groupMsgIdentifier: {
       type: Schema.Types.ObjectId,
-      ref: "Group", // Reference to Group documents
+      ref: "Group", 
     },
     privateMsgIdentifier: {
       type: Schema.Types.ObjectId,
-      ref: "PrivateMessage", // Reference to PrivateMessage documents
+      ref: "PrivateMessage", 
     },
     createdAt: {
       type: Date,
@@ -40,9 +46,6 @@ const messageSchema = new Schema(
   },
   { timestamps: true }
 );
-// Define and export the model with the IUser interface
+
 const Message = mongoose.model("Message", messageSchema);
 export default Message;
-
-
-

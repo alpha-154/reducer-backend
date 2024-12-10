@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-// Define the user schema
+
 const userSchema = new Schema(
   {
     publicKey: {
@@ -43,11 +43,11 @@ const userSchema = new Schema(
       },
     ],
 
-    sentGroupJoinRequest:[
+    sentGroupJoinRequest: [
       {
         type: String,
-      }
-    ] ,
+      },
+    ],
     friendList: [
       {
         type: Schema.Types.ObjectId,
@@ -65,23 +65,23 @@ const userSchema = new Schema(
         },
       },
     ],
-    sentPrivateMessageRequest:[
+    sentPrivateMessageRequest: [
       {
         type: String,
-      }
-    ] ,
+      },
+    ],
     chatSortList: [
-       {
-          listName: {
-            type: String,
+      {
+        listName: {
+          type: String,
+        },
+        members: [
+          {
+            type: Schema.Types.ObjectId,
+            ref: "User",
           },
-          members: [
-            {
-              type: Schema.Types.ObjectId,
-              ref: "User",
-            },
-          ]
-      }
+        ],
+      },
     ],
     createdAt: {
       type: String,
@@ -92,5 +92,3 @@ const userSchema = new Schema(
 // Define and export the model with the IUser interface
 const User = mongoose.model("User", userSchema);
 export default User;
-
-

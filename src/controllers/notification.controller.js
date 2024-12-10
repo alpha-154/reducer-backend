@@ -2,7 +2,6 @@ import User from "../models/user.model.js";
 import Notifications from "../models/notification.model.js";
 import dayjs from "dayjs";
 
-
 // Controller to get user notifications
 export const getUserNotifications = async (req, res) => {
   const { username } = req.params;
@@ -47,64 +46,83 @@ export const getUserNotifications = async (req, res) => {
       });
 
     if (!notifications) {
-      return res.status(404).json({ message: "No notifications found for this user" });
+      return res
+        .status(404)
+        .json({ message: "No notifications found for this user" });
     }
 
     // Helper function to format date
     const formatDate = (date) => dayjs(date).format("DD/MM/YY - hh:mm A");
 
-
     // Format notifications into the specified structure
     const formattedNotifications = {
-      acceptedSentPrivateMessageRequest: (notifications.acceptedSentPrivateMessageRequest || []).map((request)=> ({
+      acceptedSentPrivateMessageRequest: (
+        notifications.acceptedSentPrivateMessageRequest || []
+      ).map((request) => ({
+        id: request.userId?._id,
         name: request.userId?.userName || "",
         image: request.userId?.profileImage || "",
         date: request.createdAt ? formatDate(request.createdAt) : "",
         index: request.userId?._id || "",
         isSeen: request.isSeen,
-        isRead: request.isRead
+        isRead: request.isRead,
       })),
-      declinedSentPrivateMessageRequest: (notifications.declinedSentPrivateMessageRequest || []).map(( request) => ({
+      declinedSentPrivateMessageRequest: (
+        notifications.declinedSentPrivateMessageRequest || []
+      ).map((request) => ({
+        id: request.userId?._id,
         name: request.userId?.userName || "",
         image: request.userId?.profileImage || "",
         date: request.createdAt ? formatDate(request.createdAt) : "",
         index: request.userId?._id || "",
         isSeen: request.isSeen,
-        isRead: request.isRead
+        isRead: request.isRead,
       })),
-      acceptedSentGroupMessageRequest: (notifications.acceptedSentGroupMessageRequest || []).map((request )=> ({
+      acceptedSentGroupMessageRequest: (
+        notifications.acceptedSentGroupMessageRequest || []
+      ).map((request) => ({
+        id: request.groupId?._id,
         name: request.groupId?.groupName || "",
         image: request.groupId?.groupImage || "",
         date: request.createdAt ? formatDate(request.createdAt) : "",
         index: request.groupId?._id || "",
         isSeen: request.isSeen,
-        isRead: request.isRead
+        isRead: request.isRead,
       })),
-      declinedSentGroupMessageRequest: (notifications.declinedSentGroupMessageRequest || []).map((request ) => ({
+      declinedSentGroupMessageRequest: (
+        notifications.declinedSentGroupMessageRequest || []
+      ).map((request) => ({
+        id: request.groupId?._id,
         name: request.groupId?.groupName || "",
         image: request.groupId?.groupImage || "",
         date: request.createdAt ? formatDate(request.createdAt) : "",
         index: request.groupId?._id || "",
         isSeen: request.isSeen,
-        isRead: request.isRead
+        isRead: request.isRead,
       })),
-      receivedPrivateMessageRequest: (notifications.receivedPrivateMessageRequest || []).map((request ) => ({
+      receivedPrivateMessageRequest: (
+        notifications.receivedPrivateMessageRequest || []
+      ).map((request) => ({
+        id: request.userId?._id,
         name: request.userId?.userName || "",
         image: request.userId?.profileImage || "",
         date: request.createdAt ? formatDate(request.createdAt) : "",
         index: request.userId?._id || "",
         isSeen: request.isSeen,
-        isRead: request.isRead
+        isRead: request.isRead,
       })),
-      receivedGroupJoinRequestAsAdmin: (notifications.receivedGroupJoinRequestAsAdmin || []).flatMap((request ) => 
-        (request.requestedUser || []).map(eachUser => ({
+      receivedGroupJoinRequestAsAdmin: (
+        notifications.receivedGroupJoinRequestAsAdmin || []
+      ).flatMap((request) =>
+        (request.requestedUser || []).map((eachUser) => ({
+          id: eachUser.userId?._id,
           groupName: request.groupName || "",
           name: eachUser.userId?.userName || "",
           image: eachUser.userId?.profileImage || "",
           date: eachUser.createdAt ? formatDate(request.createdAt) : "",
           index: eachUser.userId?._id || "",
           isSeen: eachUser.isSeen,
-          isRead: eachUser.isRead
+          isRead: eachUser.isRead,
         }))
       ),
     };
@@ -113,7 +131,12 @@ export const getUserNotifications = async (req, res) => {
     res.status(200).json({ notifications: formattedNotifications });
   } catch (error) {
     console.error("Error fetching user notifications:", error);
-    res.status(500).json({ message: "An error occurred while fetching notifications", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "An error occurred while fetching notifications",
+        error: error.message,
+      });
   }
 };
 
@@ -122,16 +145,20 @@ export const deleteUserNotification = async (req, res) => {
   const { currentUserUserName } = req.params; // User ID passed in the URL
   const { notificationType, notificationIndex } = req.body; // Data passed in the request body
 
-  if (!currentUserUserName|| !notificationType || notificationIndex === undefined) {
+  if (
+    !currentUserUserName ||
+    !notificationType ||
+    notificationIndex === undefined
+  ) {
     return res.status(400).json({ message: "Invalid request parameters." });
   }
 
   try {
-     // Find user by username to get the userId
-     const user = await User.findOne({ userName: currentUserUserName });
-     if (!user) {
-       return res.status(404).json({ message: "User not found" });
-     }
+    // Find user by username to get the userId
+    const user = await User.findOne({ userName: currentUserUserName });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
     // Find the user's notification document
     const notifications = await Notifications.findOne({ userId: user._id });
 
@@ -140,7 +167,10 @@ export const deleteUserNotification = async (req, res) => {
     }
 
     // Check if the index is within the bounds of the array
-    if (notificationIndex < 0 || notificationIndex >= notifications[notificationType].length) {
+    if (
+      notificationIndex < 0 ||
+      notificationIndex >= notifications[notificationType].length
+    ) {
       return res.status(400).json({ message: "Invalid notification index." });
     }
 
@@ -150,10 +180,21 @@ export const deleteUserNotification = async (req, res) => {
     // Save the updated notifications document
     await notifications.save();
 
-    res.status(200).json({ message: "Notification deleted!" , notificationType, notificationIndex});
+    res
+      .status(200)
+      .json({
+        message: "Notification deleted!",
+        notificationType,
+        notificationIndex,
+      });
   } catch (error) {
     console.error("Error deleting notification:", error);
-    res.status(500).json({ message: "An error occurred while deleting the notification.", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "An error occurred while deleting the notification.",
+        error: error.message,
+      });
   }
 };
 
@@ -162,11 +203,12 @@ export const markNotificationAsSeen = async (req, res) => {
   const { currentUserUserName } = req.body;
 
   if (!currentUserUserName) {
-    return res.status(400).json({ message: "currentUserUserName is required." });
+    return res
+      .status(400)
+      .json({ message: "currentUserUserName is required." });
   }
 
   try {
-   
     // Find the user based on the provided username
     const user = await User.findOne({ userName: currentUserUserName });
     if (!user) {
@@ -198,10 +240,12 @@ export const markNotificationAsSeen = async (req, res) => {
       }
     );
 
-    console.log("updated notifications: ", result);
+    // console.log("updated notifications: ", result);
 
     if (!result) {
-      return res.status(404).json({ message: "No notifications found for the user." });
+      return res
+        .status(404)
+        .json({ message: "No notifications found for the user." });
     }
 
     return res.status(200).json({
@@ -215,8 +259,6 @@ export const markNotificationAsSeen = async (req, res) => {
     });
   }
 };
-
-
 
 //Controller to mark a notification as read
 
@@ -301,4 +343,3 @@ export const markNotificationAsSeen = async (req, res) => {
 //     });
 //   }
 // };
-

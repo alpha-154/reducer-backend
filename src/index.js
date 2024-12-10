@@ -17,13 +17,13 @@ if (!allowedOrigins.every((origin) => origin)) {
   throw new Error("One or more CORS_ORIGIN values are undefined in the environment variables");
 }
 
-console.log("Environment:", process.env.NODE_ENV);
-console.log("Allowed CORS Origins:", allowedOrigins);
+//console.log("Environment:", process.env.NODE_ENV);
+//console.log("Allowed CORS Origins:", allowedOrigins);
 
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      console.log("origin: ", origin);
+     // console.log("origin: ", origin);
       // Allow requests with no origin (e.g., mobile apps or Postman)
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);

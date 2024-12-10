@@ -1,6 +1,10 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+// Routes import
+import userRouter from "./routes/user.routes.js";
+import groupRouter from "./routes/group.routes.js";
+import notificationRouter from "./routes/notification.routes.js";
 
 const app = express();
 
@@ -14,8 +18,8 @@ if (!allowedOrigins.every((origin) => origin)) {
   throw new Error("One or more CORS_ORIGIN values are undefined in the environment variables");
 }
 
-console.log("Environment:", process.env.NODE_ENV);
-console.log("Allowed CORS Origins:", allowedOrigins);
+//console.log("Environment:", process.env.NODE_ENV);
+//console.log("Allowed CORS Origins:", allowedOrigins);
 
 // * Middleware
 app.use(
@@ -36,10 +40,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: false }));
 
-// Routes import
-import userRouter from "./routes/user.routes.js";
-import groupRouter from "./routes/group.routes.js";
-import notificationRouter from "./routes/notification.routes.js";
+
 
 // Routes configuration
 app.use("/api/user", userRouter);
