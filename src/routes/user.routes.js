@@ -16,6 +16,7 @@ import {
   createUserSortingList,
   updateUserSortList,
   deleteUserSortList,
+  removeFromChatSortList,
   unfriendUser,
   addToChatSortList,
   updatePassword ,
@@ -82,6 +83,7 @@ router.delete("/end-connection", unfriendUser);
 
 // Adding a User to Chat Sort List
 router.post("/add-user-to-chat-sort-list", addToChatSortList);
+router.put("/remove-user-from-chat-sort-list",  removeFromChatSortList);
 
 
 export default router;

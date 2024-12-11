@@ -598,6 +598,7 @@ export const getConnectedUsers = async (req, res) => {
       const formattedList = {
         listName: list.listName,
         members: [],
+        isNewNotification: false,
       };
 
       for (const member of list.members) {
@@ -629,11 +630,17 @@ export const getConnectedUsers = async (req, res) => {
                 totalUnseenMessages++;
               }
             })
+
           }
 
         }
 
         //console.log("onlineUsers -> getConnectedUsers: ", onlineUsers);
+        // If any user in the list has unseen messages, mark isNewNotification as true
+    if (totalUnseenMessages > 0) {
+      formattedList.isNewNotification = true;
+    }
+
 
         // Determine the online status of the member
         const isOnline = Array.from(onlineUsers.values()).includes(
@@ -1349,6 +1356,77 @@ export const addToChatSortList = async (req, res) => {
       .json({ error: "An error occurred while adding the user to the list." });
   }
 };
+
+// Remove a User from a Specific Chat Sort List
+export const removeFromChatSortList = async (req, res) => {
+  try {
+    const { currentUserUserName, deletedUserUserName, listName } = req.body;
+
+    // Validate input
+    if (!currentUserUserName || !deletedUserUserName || !listName) {
+      return res
+        .status(400)
+        .json({ error: "Required fields are missing." });
+    }
+
+    // Prevent removal from the 'All Connected Users' list
+    if (listName === "All Connected Users") {
+      return res.status(400).json({
+        error: "'All Connected Users' list cannot be modified directly.",
+      });
+    }
+
+    // Fetch the current user and the user to be removed
+    const currentUser = await User.findOne({ userName: currentUserUserName });
+    const deletedUser = await User.findOne({ userName: deletedUserUserName });
+
+    if (!currentUser || !deletedUser) {
+      return res.status(404).json({ error: "One or both users not found." });
+    }
+
+    // Locate the target list
+    const targetList = currentUser.chatSortList.find(
+      (list) => list.listName === listName
+    );
+
+    if (!targetList) {
+      return res.status(404).json({
+        error: `List '${listName}' not found for the current user.`,
+      });
+    }
+
+    // Check if the user exists in the target list
+    const userIndex = targetList.members.findIndex((memberId) =>
+      memberId.equals(deletedUser._id)
+    );
+
+    if (userIndex === -1) {
+      return res.status(400).json({
+        error: `User '${deletedUserUserName}' is not in the '${listName}' list.`,
+      });
+    }
+
+    // Remove the user from the list
+    targetList.members.splice(userIndex, 1);
+
+    // Save the updated user document
+    await currentUser.save();
+
+    res.status(200).json({
+      message: `User '${deletedUserUserName}' successfully removed from list '${listName}'.`,
+      removedUserData: {
+        listName: listName,
+        userName: deletedUserUserName,
+      },
+    });
+  } catch (error) {
+    console.error("Error removing user from chatSortList:", error);
+    res
+      .status(500)
+      .json({ error: "An error occurred while removing the user from the list." });
+  }
+};
+
 
 // Update An User's Profile Image
 export const updateProfileImage = async (req, res) => {
