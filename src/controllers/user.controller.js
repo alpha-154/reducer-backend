@@ -42,6 +42,8 @@ export const registerUser = async (req, res) => {
       { listName: "Friends", members: [] },
       { listName: "Office", members: [] },
       { listName: "University", members: [] },
+      { listName: "Cohort", members: [] },
+      { listName: "Batch", members: [] },
     ];
 
     const newUser = new User({
