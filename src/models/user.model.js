@@ -83,6 +83,12 @@ const userSchema = new Schema(
         ],
       },
     ],
+    dailyTask: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Daily"
+      }
+    ],
     createdAt: {
       type: String,
     },

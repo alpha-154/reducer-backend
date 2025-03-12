@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import userRouter from "./routes/user.routes.js";
 import groupRouter from "./routes/group.routes.js";
 import notificationRouter from "./routes/notification.routes.js";
+import dailyTaskManagerRouter from "./routes/dailyTask.routes.js";
 
 const app = express();
 
@@ -46,5 +47,6 @@ app.use(express.urlencoded({ extended: false }));
 app.use("/api/user", userRouter);
 app.use("/api/group", groupRouter);
 app.use("/api/notification", notificationRouter);
+app.use("/api/daily-task-manager", dailyTaskManagerRouter);
 
 export default app;
